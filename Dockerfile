@@ -5,31 +5,23 @@ WORKDIR /home
 
 RUN curl https://packages.microsoft.com/keys/microsoft.asc | apt-key add - \
     && curl https://packages.microsoft.com/config/debian/10/prod.list > /etc/apt/sources.list.d/mssql-release.list \
-    && apt-get update && ACCEPT_EULA=Y apt-get install -y --no-install-recommends \
-        ipython \
-        python-numpy \
-        python-scipy \
-        python-matplotlib \
-        msodbcsql17 \
-        mssql-tools \
-        openjdk-8-jdk \
-        python-pandas \
-        unixodbc-dev \
+    && apt-get update \
+    && ACCEPT_EULA=Y apt-get install -y --no-install-recommends \
+        apt-transport-https ca-certificates wget dirmngr gnupg software-properties-common \
+        ipython python-numpy python-matplotlib python-pandas python-scipy \
+        msodbcsql17 mssql-tools unixodbc-dev \
     && rm -rf /var/lib/apt/lists/*
 
-ENV PATH $PATH:/opt/mssql-tools/bin
-
-RUN add-apt-repository ppa:webupd8team/java \
-    && apt-get install -y \
-        openjdk-8-jdk \
-        ant
-# Fix certificate issues
-RUN apt-get update && \
-    apt-get install ca-certificates-java && \
-    apt-get clean && \
-    update-ca-certificates -f;
-ENV JAVA_HOME /usr/lib/jvm/java-8-openjdk-amd64/
+# Install OpenJDK 8
+RUN wget -qO - https://adoptopenjdk.jfrog.io/adoptopenjdk/api/gpg/key/public | apt-key add - \
+    && add-apt-repository --yes https://adoptopenjdk.jfrog.io/adoptopenjdk/deb/ \
+    && apt update \
+    && apt install -y adoptopenjdk-8-hotspot
+ENV JAVA_HOME /usr/lib/jvm/adoptopenjdk-8-hotspot-amd64/
 RUN export JAVA_HOME
+
+
+ENV PATH $PATH:/opt/mssql-tools/bin
 
 RUN /usr/local/bin/python -m pip install --upgrade pip
 
