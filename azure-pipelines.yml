@@ -1,0 +1,65 @@
+variables:
+  - name: imageTag
+    value: ${{ replace(variables['Build.SourceBranch'],'refs/tags/','') }}
+  - name: isTaggedBuild
+    value: ${{ startsWith(variables['Build.SourceBranch'],'refs/tags/') }}
+  - name: azureContainerRegistry
+    value: 'keboola-4338'
+  - name: imageRepository
+    value: 'docker-python-databricks'
+  - name: registryUrl
+    value: 'keboola.azurecr.io'
+
+pr: none
+trigger:
+  branches:
+    include: ['*']
+    exclude: ['master']
+  tags:
+    include: ['*']
+
+jobs:
+  - job: Build
+    pool:
+      vmImage: ubuntu-latest
+    timeoutInMinutes: 120
+    steps:
+    - script: docker info
+      displayName: 'Info'
+
+    - script: echo '##vso[task.setvariable variable=imageTag]$(Build.BuildId)'
+      displayName: "Set the imageTag to buildId if it's not a tag build"
+      condition: eq(variables['isTaggedBuild'], 'false')
+
+    - task: Docker@2
+      timeoutInMinutes: 120
+      inputs:
+        containerRegistry: $(azureContainerRegistry)
+        repository: $(imageRepository)
+        command: 'build'
+        Dockerfile: '**/Dockerfile'
+        tags: |
+          latest
+          $(imageTag)
+
+    - task: ECRPushImage@1
+      displayName: Push to ECR
+      condition: eq(variables['isTaggedBuild'], 'true')
+      inputs:
+        awsCredentials: 'Production - ECR Distribution - MLFlow'
+        regionName: 'us-east-1'
+        imageSource: 'imagename'
+        repositoryName: 'keboola/$(imageRepository)'
+        sourceImageName: '$(registryUrl)/$(imageRepository)'
+        sourceImageTag: $(imageTag)
+        pushTag: $(imageTag)
+
+    - task: Docker@2
+      displayName: 'Push to ACR'
+      condition: eq(variables['isTaggedBuild'], 'true')
+      inputs:
+        containerRegistry: $(azureContainerRegistry)
+        repository: $(imageRepository)
+        command: 'push'
+        tags: |
+          $(imageTag)
