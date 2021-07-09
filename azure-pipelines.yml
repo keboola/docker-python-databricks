@@ -42,18 +42,6 @@ jobs:
           latest
           $(imageTag)
 
-    - task: ECRPushImage@1
-      displayName: Push to ECR
-      condition: eq(variables['isTaggedBuild'], 'true')
-      inputs:
-        awsCredentials: 'Production - ECR Distribution - MLFlow'
-        regionName: 'us-east-1'
-        imageSource: 'imagename'
-        repositoryName: 'keboola/$(imageRepository)'
-        sourceImageName: '$(registryUrl)/$(imageRepository)'
-        sourceImageTag: $(imageTag)
-        pushTag: $(imageTag)
-
     - task: Docker@2
       displayName: 'Push to ACR'
       condition: eq(variables['isTaggedBuild'], 'true')
